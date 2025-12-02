@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網路共享圖書管理系統</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Noto Sans 字體 (推薦用於中文顯示) -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        /* Custom styles for better aesthetics */
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .form-toggle-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="container mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center text-indigo-800 mb-8">
+            網路共享圖書管理系統
+        </h1>
+        
+        <!-- 新增圖書按鈕 -->
+        <div class="mb-6 flex justify-center">
+            <button id="toggle-form-btn" class="form-toggle-btn px-8 py-3 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition duration-150 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                新增圖書
+            </button>
+        </div>
+        
+        <!-- 匯入/匯出/清空 功能區塊 -->
+        <div class="mb-8 p-4 bg-white rounded-xl shadow-inner flex flex-wrap justify-center gap-4">
+            <!-- 匯出按鈕 -->
+            <button id="export-btn" class="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition duration-150 shadow-md flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                匯出資料 (CSV)
+            </button>
+            
+            <!-- 匯入按鈕與隱藏的 File Input -->
+            <label for="import-file" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition duration-150 shadow-md cursor-pointer flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm4.293-9.707a1 1 0 011.414 0L10 9.586V3a1 1 0 112 0v6.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                匯入資料 (CSV)
+            </label>
+            <input type="file" id="import-file" accept=".csv" class="hidden">
+
+            <!-- 清空按鈕 -->
+            <button id="clear-all-btn" class="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-150 shadow-md flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                清空圖書資料
+            </button>
+        </div>
+
+
+        <!-- 1. 新增圖書表單 (預設隱藏) -->
+        <div id="add-book-form-container" class="bg-white p-6 md:p-8 rounded-xl card mb-10 border-t-4 border-indigo-500 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">新增圖書</h2>
+            <form id="add-book-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <!-- 書名 -->
+                <div class="col-span-1">
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">書名</label>
+                    <input type="text" id="title" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <!-- 作者 -->
+                <div class="col-span-1">
+                    <label for="author" class="block text-sm font-medium text-gray-700 mb-1">作者</label>
+                    <input type="text" id="author" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <!-- 出版社 -->
+                <div class="col-span-1">
+                    <label for="publisher" class="block text-sm font-medium text-gray-700 mb-1">出版社</label>
+                    <input type="text" id="publisher" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <!-- 圖書簡介 (佔滿一行) -->
+                <div class="md:col-span-2">
+                    <label for="summary" class="block text-sm font-medium text-gray-700 mb-1">圖書簡介</label>
+                    <textarea id="summary" rows="3" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+
+                <!-- 送出按鈕 -->
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="w-full sm:w-auto px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150">
+                        儲存圖書
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 2. 圖書列表 -->
+        <div class="bg-white p-6 md:p-8 rounded-xl card">
+            <h2 class="text-xl font-semibold mb-6 text-gray-700">共享圖書列表</h2>
+            <div id="book-list" class="space-y-4">
+                <p id="loading-message" class="text-center text-gray-500">正在載入圖書資料...</p>
+                <!-- 圖書卡片將會被 JavaScript 渲染於此 -->
+            </div>
+            <p id="empty-message" class="hidden text-center text-gray-500 mt-4">目前沒有圖書。請新增一本！</p>
+        </div>
+        
+        <!-- 3. 用戶 ID 顯示 (用於多使用者識別) -->
+        <p id="user-info" class="text-xs text-gray-500 text-center mt-6">
+            您的用戶 ID (資料庫共享中): <span id="user-id-display" class="font-mono bg-gray-200 px-1 rounded">載入中...</span>
+        </p>
+
+        <!-- 4. 錯誤訊息 Modal (取代 alert()) -->
+        <div id="error-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+                <h3 class="text-lg font-bold text-red-600 mb-3">操作錯誤</h3>
+                <p id="error-message" class="text-sm text-gray-700 mb-4"></p>
+                <button onclick="document.getElementById('error-modal').classList.add('hidden')" class="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">確定</button>
+            </div>
+        </div>
+
+        <!-- 5. 確認 Modal (取代 confirm()) -->
+        <div id="confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+                <h3 id="confirm-title" class="text-lg font-bold text-yellow-600 mb-3">確認操作</h3>
+                <p id="confirm-message" class="text-sm text-gray-700 mb-4">您確定要執行此操作嗎？</p>
+                <div class="flex justify-end gap-3">
+                    <button id="cancel-action-btn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition duration-150">取消</button>
+                    <button id="confirm-action-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-150">確認刪除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK 模組引入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            deleteDoc, 
+            doc, 
+            onSnapshot, 
+            query, 
+            orderBy, 
+            serverTimestamp,
+            getDocs
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase 服務
+        setLogLevel('debug'); // 啟用 Firestore 偵錯日誌
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (Object.keys(firebaseConfig).length === 0) {
+            console.error("Firebase 配置遺失。應用程式無法運行。");
+            document.getElementById('loading-message').textContent = "錯誤：Firebase 配置遺失。";
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let currentUserId = null;
+        let booksCollectionRef = null; // 共享資料集的引用
+
+        // UI 元素引用
+        const bookListEl = document.getElementById('book-list');
+        const loadingMessageEl = document.getElementById('loading-message');
+        const emptyMessageEl = document.getElementById('empty-message');
+        const userIdDisplayEl = document.getElementById('user-id-display');
+        const addBookFormContainerEl = document.getElementById('add-book-form-container');
+        const toggleFormBtnEl = document.getElementById('toggle-form-btn');
+
+        // 新增的 UI 元素引用
+        const importFileEl = document.getElementById('import-file');
+        const exportBtnEl = document.getElementById('export-btn');
+        const clearAllBtnEl = document.getElementById('clear-all-btn');
+        const confirmModalEl = document.getElementById('confirm-modal');
+        const confirmActionBtnEl = document.getElementById('confirm-action-btn');
+        const cancelActionBtnEl = document.getElementById('cancel-action-btn');
+
+        // 範例圖書資料
+        const sampleBooks = [
+            {
+                title: "時間簡史",
+                author: "史蒂芬·霍金 (Stephen Hawking)",
+                publisher: "大塊文化",
+                summary: "一本探索宇宙本質與歷史的科普著作，涵蓋大爆炸、黑洞、時空等複雜概念。",
+            },
+            {
+                title: "老人與海",
+                author: "厄內斯特·海明威 (Ernest Hemingway)",
+                publisher: "麥田出版",
+                summary: "描寫一位古巴老漁夫與一條巨大馬林魚搏鬥的故事，象徵人類的意志與尊嚴。",
+            },
+            {
+                title: "深度學習",
+                author: "伊恩·古德費洛 (Ian Goodfellow)",
+                publisher: "碁峯資訊",
+                summary: "人工智慧領域的權威教材，詳細介紹深度學習的數學基礎、理論與應用。",
+            },
+            {
+                title: "人類大歷史",
+                author: "尤瓦爾·諾亞·哈拉瑞 (Yuval Noah Harari)",
+                publisher: "天下文化",
+                summary: "從認知革命到未來發展，全面審視智人如何演變並主宰地球的故事。",
+            },
+            {
+                title: "被討厭的勇氣",
+                author: "岸見一郎, 古賀史健",
+                publisher: "究竟出版",
+                summary: "以對話形式闡述阿德勒心理學，探討如何擺脫過去經驗、活出自由的人生。",
+            }
+        ];
+
+        // 顯示錯誤訊息的函式 (取代 alert())
+        function showCustomError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-modal').classList.remove('hidden');
+            document.getElementById('error-modal').classList.add('flex');
+        }
+
+        // 顯示確認訊息的函式 (取代 confirm())
+        function showConfirmation(title, message, callback) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            confirmModalEl.classList.remove('hidden');
+            confirmModalEl.classList.add('flex');
+            
+            confirmActionBtnEl.onclick = () => {
+                confirmModalEl.classList.add('hidden');
+                callback(true);
+            };
+            cancelActionBtnEl.onclick = () => {
+                confirmModalEl.classList.add('hidden');
+                callback(false);
+            };
+        }
+
+
+        /**
+         * 檢查資料庫是否為空，若為空則寫入範例資料。
+         * @param {object} colRef - Firestore Collection Reference
+         */
+        async function seedInitialData(colRef) {
+            try {
+                const snapshot = await getDocs(colRef);
+                
+                if (snapshot.empty) {
+                    console.log("共享資料庫為空，正在寫入 5 筆範例資料...");
+                    
+                    const batchWrites = sampleBooks.map(book => 
+                        addDoc(colRef, { ...book, timestamp: serverTimestamp() })
+                    );
+                    
+                    await Promise.all(batchWrites);
+                    console.log("範例資料寫入完成。");
+                }
+            } catch (error) {
+                console.error("寫入範例資料失敗:", error);
+            }
+        }
+
+
+        // 1. 身份驗證和初始化
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // 已登入
+                currentUserId = user.uid;
+                userIdDisplayEl.textContent = currentUserId;
+                
+                // **** 關鍵修正：將資料路徑改為共享的公開路徑 ****
+                // 路徑結構: /artifacts/{appId}/public/data/{your_collection_name}
+                booksCollectionRef = collection(db, `artifacts/${appId}/public/data/books`);
+                // **********************************************
+                
+                // 1.1 檢查並寫入範例資料
+                // 由於是共享資料庫，只有在完全沒有資料時才寫入範例。
+                await seedInitialData(booksCollectionRef);
+                
+                // 1.2 啟動即時監聽器
+                setupRealtimeListener();
+
+            } else {
+                // 嘗試登入
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    console.log("Firebase 登入成功。");
+                } catch (error) {
+                    console.error("Firebase 登入失敗:", error);
+                    showCustomError("Firebase 登入失敗。請檢查您的網路連線。");
+                    loadingMessageEl.textContent = "登入失敗。";
+                }
+            }
+        });
+
+        // 2. 表單顯示切換功能 (toggle)
+        toggleFormBtnEl.addEventListener('click', () => {
+            addBookFormContainerEl.classList.toggle('hidden');
+            const isHidden = addBookFormContainerEl.classList.contains('hidden');
+            
+            // 根據狀態切換按鈕文字和圖示
+            if (isHidden) {
+                toggleFormBtnEl.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    新增圖書
+                `;
+                toggleFormBtnEl.classList.replace('bg-red-500', 'bg-green-500');
+                toggleFormBtnEl.classList.replace('focus:ring-red-300', 'focus:ring-green-300');
+            } else {
+                toggleFormBtnEl.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    關閉表單
+                `;
+                toggleFormBtnEl.classList.replace('bg-green-500', 'bg-red-500');
+                toggleFormBtnEl.classList.replace('focus:ring-green-300', 'focus:ring-red-300');
+
+                addBookFormContainerEl.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+
+        // 3. 處理新增圖書
+        document.getElementById('add-book-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!booksCollectionRef) {
+                showCustomError("系統未初始化完成，請稍候再試。");
+                return;
+            }
+
+            const newBook = {
+                title: document.getElementById('title').value,
+                author: document.getElementById('author').value,
+                publisher: document.getElementById('publisher').value,
+                summary: document.getElementById('summary').value,
+                timestamp: serverTimestamp() 
+            };
+
+            try {
+                await addDoc(booksCollectionRef, newBook);
+                
+                // 清空表單並隱藏
+                e.target.reset();
+                if (!addBookFormContainerEl.classList.contains('hidden')) {
+                     toggleFormBtnEl.click(); // 模擬點擊按鈕關閉表單
+                }
+
+                console.log("圖書新增成功:", newBook.title);
+
+            } catch (error) {
+                console.error("新增圖書失敗:", error);
+                showCustomError(`新增圖書失敗: ${error.message}`);
+            }
+        });
+
+        // 4. 即時監聽圖書列表 (setupRealtimeListener)
+        function setupRealtimeListener() {
+            // 查詢共享資料集
+            const q = query(booksCollectionRef, orderBy('timestamp', 'desc'));
+            
+            onSnapshot(q, (snapshot) => {
+                loadingMessageEl.classList.add('hidden'); // 隱藏載入訊息
+                bookListEl.innerHTML = ''; // 清空現有列表
+
+                if (snapshot.empty) {
+                    emptyMessageEl.classList.remove('hidden');
+                    return;
+                }
+                
+                emptyMessageEl.classList.add('hidden');
+
+                snapshot.docs.forEach(docSnapshot => {
+                    const book = docSnapshot.data();
+                    const docId = docSnapshot.id;
+                    
+                    const bookCard = document.createElement('div');
+                    bookCard.className = 'bg-gray-50 p-4 rounded-lg border border-gray-200 flex justify-between items-start transition duration-200 hover:bg-gray-100';
+                    bookCard.innerHTML = `
+                        <div class="flex-grow min-w-0 pr-4">
+                            <h3 class="text-lg font-bold text-indigo-700 truncate">${book.title || '無標題'}</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                <span class="font-semibold">作者:</span> ${book.author || '未知'}
+                                <span class="mx-2 text-gray-400">|</span>
+                                <span class="font-semibold">出版社:</span> ${book.publisher || '未知'}
+                            </p>
+                            <p class="text-sm text-gray-500 mt-2 whitespace-pre-wrap">
+                                <span class="font-semibold text-gray-700">簡介:</span> ${book.summary || '無簡介'}
+                            </p>
+                        </div>
+                        <button data-id="${docId}" class="delete-btn flex-shrink-0 ml-4 p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-full transition duration-150" title="刪除">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    `;
+                    
+                    bookListEl.appendChild(bookCard);
+                });
+            
+            }, (error) => {
+                console.error("即時監聽圖書列表失敗:", error);
+                showCustomError(`載入圖書列表失敗: ${error.message}`);
+                loadingMessageEl.textContent = "載入圖書資料錯誤。";
+            });
+        }
+
+        // 5. 處理刪除圖書 (事件代理)
+        bookListEl.addEventListener('click', async (e) => {
+            const deleteButton = e.target.closest('.delete-btn');
+            if (deleteButton) {
+                const docId = deleteButton.getAttribute('data-id');
+                
+                try {
+                    // 使用共享路徑
+                    const bookRef = doc(booksCollectionRef, docId);
+                    await deleteDoc(bookRef);
+                    console.log(`圖書 ID ${docId} 刪除成功。`);
+                } catch (error) {
+                    console.error("刪除圖書失敗:", error);
+                    showCustomError(`刪除圖書失敗: ${error.message}`);
+                }
+            }
+        });
+
+        // --- 6. 匯出功能 (Export) ---
+        async function exportDataAsCsv() {
+            if (!booksCollectionRef) {
+                showCustomError("系統未初始化。");
+                return;
+            }
+
+            try {
+                // 獲取所有圖書
+                const snapshot = await getDocs(booksCollectionRef);
+                const books = snapshot.docs.map(doc => doc.data());
+
+                if (books.length === 0) {
+                    showCustomError("沒有可匯出的圖書資料。");
+                    return;
+                }
+
+                const headers = ["書名", "作者", "出版社", "圖書簡介"];
+                const keys = ["title", "author", "publisher", "summary"];
+
+                // 簡單的 CSV 格式化函數，處理逗號和換行符
+                const sanitize = (s) => `"${String(s || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`;
+
+                let csvContent = headers.map(sanitize).join(',') + '\n';
+
+                books.forEach(book => {
+                    const row = keys.map(key => sanitize(book[key])).join(',');
+                    csvContent += row + '\n';
+                });
+
+                // 加上 UTF-8 BOM，以確保 Excel 正確識別編碼
+                const bom = '\ufeff'; 
+                const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+                
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', `shared_book_list_${new Date().toISOString().slice(0, 10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showCustomError("圖書資料匯出成功！檔案已開始下載。");
+            } catch (error) {
+                console.error("匯出資料失敗:", error);
+                showCustomError(`匯出資料失敗: ${error.message}`);
+            }
+        }
+        
+        // --- 7. 匯入功能 (Import) ---
+        function handleImport(e) {
+            if (!booksCollectionRef) {
+                showCustomError("系統未初始化。");
+                return;
+            }
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showCustomError("請上傳 CSV 格式的檔案。");
+                importFileEl.value = ''; 
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const csvText = event.target.result;
+                try {
+                    await processCsvImport(csvText);
+                } catch (error) {
+                    showCustomError(`匯入處理失敗: ${error.message}`);
+                } finally {
+                    importFileEl.value = ''; // 重置文件輸入
+                }
+            };
+            reader.onerror = () => {
+                showCustomError("讀取檔案失敗。");
+                importFileEl.value = ''; 
+            };
+            // 以 UTF-8 讀取檔案
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        async function processCsvImport(csvText) {
+            // 清理可能的 BOM
+            if (csvText.charCodeAt(0) === 0xFEFF) {
+                csvText = csvText.substring(1);
+            }
+
+            const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                throw new Error("CSV 檔案內容不足 (至少需要標題和一行數據)。");
+            }
+
+            // 預期欄位順序：書名, 作者, 出版社, 圖書簡介
+            const keys = ["title", "author", "publisher", "summary"]; 
+
+            const dataLines = lines.slice(1);
+            const booksToImport = [];
+
+            dataLines.forEach((line, index) => {
+                // 簡單的 CSV 解析，處理引號和逗號
+                const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                
+                // 清理引號和轉義的換行符
+                const cleanValues = values.map(v => {
+                    let cleaned = v.trim();
+                    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                        cleaned = cleaned.substring(1, cleaned.length - 1);
+                    }
+                    return cleaned.replace(/""/g, '"').replace(/\\n/g, '\n');
+                });
+
+                if (cleanValues.length !== keys.length) {
+                    console.warn(`第 ${index + 2} 行數據格式不正確，跳過。`);
+                    return;
+                }
+
+                const book = { timestamp: serverTimestamp() };
+                keys.forEach((key, i) => {
+                    book[key] = cleanValues[i];
+                });
+                
+                if (book.title && book.author) {
+                     booksToImport.push(book);
+                } else {
+                     console.warn(`第 ${index + 2} 行缺少書名或作者，跳過。`);
+                }
+            });
+
+            if (booksToImport.length === 0) {
+                throw new Error("檔案中沒有有效的圖書數據可以匯入。");
+            }
+            
+            console.log(`準備匯入 ${booksToImport.length} 筆圖書...`);
+
+            // 批量寫入
+            const batchWrites = booksToImport.map(book => addDoc(booksCollectionRef, book));
+            await Promise.all(batchWrites);
+
+            showCustomError(`成功匯入 ${booksToImport.length} 筆圖書資料。`);
+        }
+
+
+        // --- 8. 清空功能 (Clear All) ---
+        async function deleteAllBooks() {
+            if (!booksCollectionRef) {
+                showCustomError("系統未初始化。");
+                return;
+            }
+
+            try {
+                const snapshot = await getDocs(booksCollectionRef);
+                if (snapshot.empty) {
+                    showCustomError("資料庫已經是空的了。");
+                    return;
+                }
+
+                console.log(`正在準備刪除 ${snapshot.size} 筆圖書...`);
+                
+                // 批量刪除所有文件
+                const deletePromises = snapshot.docs.map(docSnapshot => {
+                    const docRef = doc(booksCollectionRef, docSnapshot.id);
+                    return deleteDoc(docRef);
+                });
+
+                await Promise.all(deletePromises);
+                console.log("所有圖書資料已成功清除。");
+                showCustomError(`成功清除了 ${snapshot.size} 筆共享圖書資料。`);
+
+            } catch (error) {
+                console.error("清除資料失敗:", error);
+                showCustomError(`清除所有圖書資料失敗: ${error.message}`);
+            }
+        }
+
+        // 綁定事件監聽器
+        clearAllBtnEl.addEventListener('click', () => {
+            showConfirmation(
+                "確認清空所有共享資料",
+                "您確定要永久刪除所有用戶共同使用的圖書資料嗎？此操作不可逆轉！",
+                (confirmed) => {
+                    if (confirmed) {
+                        deleteAllBooks();
+                    }
+                }
+            );
+        });
+
+        exportBtnEl.addEventListener('click', exportDataAsCsv);
+        importFileEl.addEventListener('change', handleImport);
+        
+    </script>
+</body>
+</html>
